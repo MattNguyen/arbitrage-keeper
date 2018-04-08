@@ -20,7 +20,7 @@ import logging
 import sys
 from typing import List
 
-from web3 import Web3, HTTPProvider
+from web3 import Web3, IPCProvider
 
 from arbitrage_keeper.conversion import Conversion, OasisTakeConversion
 from arbitrage_keeper.conversion import TubBoomConversion, TubBustConversion, TubExitConversion, TubJoinConversion
@@ -87,11 +87,21 @@ class ArbitrageKeeper:
         parser.add_argument("--debug", dest='debug', action='store_true',
                             help="Enable debug output")
 
+        parser.add_argument("--ipcpath", type=str, required=True,
+                            help="Local IPC Path")
+
+        parser.add_argument("--eth-from-password", type=str, required=True,
+                            help="Eth account password")
+
         self.arguments = parser.parse_args(args)
 
-        self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(HTTPProvider(endpoint_uri=f"http://{self.arguments.rpc_host}:{self.arguments.rpc_port}",
-                                                                              request_kwargs={"timeout": self.arguments.rpc_timeout}))
+        self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(IPCProvider(ipc_path=self.arguments.ipcpath))
+
         self.web3.eth.defaultAccount = self.arguments.eth_from
+
+        if !self.web3.personal.unlockAccount(self.web3.eth.defaultAccount, self.arguments.eth_from_password):
+            raise Exception(f"Incorrect account password")
+
         self.our_address = Address(self.arguments.eth_from)
         self.otc = MatchingMarket(web3=self.web3, address=Address(self.arguments.oasis_address))
         self.tub = Tub(web3=self.web3, address=Address(self.arguments.tub_address))
